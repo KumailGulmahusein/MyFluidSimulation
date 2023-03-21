@@ -96,6 +96,7 @@ public class ParticleManager : MonoBehaviour
         Integrate();
         ComputeColliders();
         Changeposition();
+        ChangeGravity();
     }
 
     //Initialize GameObjects
@@ -117,6 +118,7 @@ public class ParticleManager : MonoBehaviour
         }
     }
 
+
     //Compute density pressure
     private void ComputedensityPressure()
     {
@@ -131,29 +133,42 @@ public class ParticleManager : MonoBehaviour
 
                 if (r < parameters[particles[i].parameterID].smoothingRadiusSq)
                 {
-                    particles[i].density += parameters[particles[i].parameterID].mass * weightFunction(r, parameters[particles[i].parameterID].smoothingRadius);
+                    particles[i].density += parameters[particles[i].parameterID].mass * 315.0f / (64.0f * Mathf.PI * (float)Mathf.Pow(parameters[particles[i].parameterID].smoothingRadius, 9.0f)) * Mathf.Pow(parameters[particles[i].parameterID].smoothingRadiusSq - r, 3f);
                 }
+
             }
 
             particles[i].pressure = gasValue * (particles[i].density - parameters[particles[i].parameterID].restdensity);
         });
     }
-    //Weight function paret of density formula
-    private float weightFunction(float r, float smoothingRadius)
-    {
-        float h2 = smoothingRadius * smoothingRadius;
-        float coeff = 315.0f / (64.0f * Mathf.PI * Mathf.Pow(smoothingRadius, 9.0f));
-        float q = 1.0f - r * r / h2;
 
-        if (q > 0.0f)
+    /* Spiky Kernal
+    private void ComputedensityPressure()
+    {
+        Parallel.For(0, particles.Length, i =>
         {
-            return coeff * q * q * q;
-        }
-        else
-        {
-            return 0.0f;
-        }
+            particles[i].density = 0.0f;
+
+            for (int j = 0; j < particles.Length; j++)
+            {
+                Vector3 rij = particles[j].position - particles[i].position;
+                float r = rij.sqrMagnitude;
+                float root = Mathf.Sqrt(r);
+
+                if (r < parameters[particles[i].parameterID].smoothingRadiusSq)
+                {
+                    particles[i].density += parameters[particles[i].parameterID].mass * 15.0f / (Mathf.PI * (float)Mathf.Pow(parameters[particles[i].parameterID].smoothingRadius, 6.0f)) * Mathf.Pow(parameters[particles[i].parameterID].smoothingRadiusSq - r, 3f);
+                }
+
+            }
+
+            particles[i].pressure = gasValue * (particles[i].density - parameters[particles[i].parameterID].restdensity);
+        });
     }
+    */
+    //315.0f / (64.0f * Mathf.PI * (float)Mathf.Pow(parameters[particles[i].parameterID].smoothingRadius, 9.0f))
+
+
     //Compute pressure, viscosity and gravity
     private void ComputeForces()
     {
@@ -172,7 +187,7 @@ public class ParticleManager : MonoBehaviour
 
                 if (r < parameters[particles[i].parameterID].smoothingRadius)
                 {
-                    forcePressure += -rij.normalized * parameters[particles[i].parameterID].mass * (particles[i].pressure + particles[j].pressure) / (2.0f * particles[j].density) * (-45.0f / (Mathf.PI * Mathf.Pow(parameters[particles[i].parameterID].smoothingRadius, 6.0f))) * Mathf.Pow(parameters[particles[i].parameterID].smoothingRadius - r, 2.0f);
+                    forcePressure += (particles[i].pressure + particles[j].pressure) * parameters[particles[i].parameterID].mass * -rij.normalized / (2.0f * particles[j].density) * (-45.0f / (Mathf.PI * Mathf.Pow(parameters[particles[i].parameterID].smoothingRadius, 6.0f))) * Mathf.Pow(parameters[particles[i].parameterID].smoothingRadius - r, 2.0f);
 
                     forceViscosity += parameters[particles[i].parameterID].viscosity * parameters[particles[i].parameterID].mass * (particles[j].velocity - particles[i].velocity) / particles[j].density * (45.0f / (Mathf.PI * Mathf.Pow(parameters[particles[i].parameterID].smoothingRadius, 6.0f))) * (parameters[particles[i].parameterID].smoothingRadius - r);
                 }
@@ -244,6 +259,28 @@ public class ParticleManager : MonoBehaviour
         for (int i = 0; i < particles.Length; i++)
         {
             particles[i].gameObject.transform.position = particles[i].position;
+        }
+    }
+
+    private void ChangeGravity()
+    {
+        if (Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            gravity = new Vector3(-9.81f, 0.0f, 0.0f);
+        }
+
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            gravity = new Vector3(9.81f, 0.0f, 0.0f);
+        }
+
+        if (Input.GetKeyDown(KeyCode.DownArrow))
+        {
+            gravity = new Vector3(0.0f, -9.81f, 0.0f);        }
+
+        if (Input.GetKeyDown(KeyCode.UpArrow))
+        {
+            gravity = new Vector3(0.0f, 9.81f, 0.0f);
         }
     }
 }

@@ -996,13 +996,13 @@ MonoBehaviour:
   ParticlePrefab: {fileID: 1925458292855768029, guid: c88ec5db306b3d44d82aab96f8cd1daa, type: 3}
   parameterID: 0
   parameters:
-  - Radius: 1
-    smoothingRadius: 1.07
+  - radius: 1
+    smoothingRadius: 1.05
     smoothingRadiusSq: 1
-    RestDensity: 25
-    gravityMultiplier: 2000
-    Mass: 0.1
-    Viscosity: 1
-    Drag: 0.025
+    restdensity: 15
+    gravityMultiplier: 1500
+    mass: 0.1
+    viscosity: 1
+    drag: 0.025
   Amount: 2000
   Rows: 20

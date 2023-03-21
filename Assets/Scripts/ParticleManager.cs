@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 public class ParticleManager : MonoBehaviour
 {
+    //Particle variables
     private struct Particle
     {
         public GameObject Gameobject;
@@ -30,6 +31,7 @@ public class ParticleManager : MonoBehaviour
         }
     }
 
+    //Simulation variables
     [System.Serializable]
     private struct SPHParameters
     {
@@ -64,13 +66,7 @@ public class ParticleManager : MonoBehaviour
 
     private Particle[] particles;
 
-
-    // Start is called before the first frame Update
-    private void Start()
-    {
-        InitializeParticles();
-    }
-
+    //Collider variables
     private struct ParticleCollider
     {
         public Vector3 Position;
@@ -86,6 +82,11 @@ public class ParticleManager : MonoBehaviour
             Scale = new Vector2(_transform.lossyScale.x / 2f, _transform.lossyScale.y / 2f);
         }
     }
+    // Start is called before the first frame Update
+    private void Start()
+    {
+        InitializeParticles();
+    }
 
     // Update is called once per frame
     void Update()
@@ -97,6 +98,7 @@ public class ParticleManager : MonoBehaviour
         ApplyPosition();
     }
 
+    //Initialize GameObjects
     private void InitializeParticles()
     {
         particles = new Particle[Amount];
@@ -115,6 +117,7 @@ public class ParticleManager : MonoBehaviour
         }
     }
 
+    //Compute Density pressure
     private void ComputeDensityPressure()
     {
         Parallel.For(0, particles.Length, i =>
@@ -135,6 +138,7 @@ public class ParticleManager : MonoBehaviour
             particles[i].Pressure = GasValue * (particles[i].Density - parameters[particles[i].parameterID].RestDensity);
         });
     }
+    //Weight function paret of density formula
     private float weightFunction(float r, float smoothingRadius)
     {
         float h2 = smoothingRadius * smoothingRadius;
@@ -150,7 +154,7 @@ public class ParticleManager : MonoBehaviour
             return 0.0f;
         }
     }
-    
+    //Compute pressure, viscosity and gravity
     private void ComputeForces()
     {
         Parallel.For(0, particles.Length, i =>
@@ -180,6 +184,7 @@ public class ParticleManager : MonoBehaviour
         });
     }
 
+    //Numerical integration timestep
     private void Integrate()
     {
         for (int i = 0; i < particles.Length; i++)
@@ -189,6 +194,7 @@ public class ParticleManager : MonoBehaviour
         }
     }
 
+    //Boundary conditions
     private void ComputeColliders()
     {
         // Get colliders

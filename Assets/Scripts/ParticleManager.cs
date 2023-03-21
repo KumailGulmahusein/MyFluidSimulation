@@ -96,7 +96,7 @@ public class ParticleManager : MonoBehaviour
         Integrate();
         ComputeColliders();
         Changeposition();
-        ChangeGravity();
+        PlayerInput();
     }
 
     //Initialize GameObjects
@@ -262,7 +262,7 @@ public class ParticleManager : MonoBehaviour
         }
     }
 
-    private void ChangeGravity()
+    private void PlayerInput()
     {
         if (Input.GetKeyDown(KeyCode.LeftArrow))
         {
@@ -276,7 +276,8 @@ public class ParticleManager : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.DownArrow))
         {
-            gravity = new Vector3(0.0f, -9.81f, 0.0f);        }
+            gravity = new Vector3(0.0f, -9.81f, 0.0f);  
+        }
 
         if (Input.GetKeyDown(KeyCode.UpArrow))
         {

@@ -11,7 +11,7 @@ public class ParticleManager : MonoBehaviour
         public GameObject gameObject;
         public Vector3 position;
         public Vector3 velocity;
-        public Vector3 forcePhysic;
+        public Vector3 forceN;
         public Vector3 forceHeading;
         public float density;
         public float pressure;
@@ -24,7 +24,7 @@ public class ParticleManager : MonoBehaviour
             gameObject = pGo;
 
             velocity = Vector3.zero;
-            forcePhysic = Vector3.zero;
+            forceN = Vector3.zero;
             forceHeading = Vector3.zero;
             density = 0.0f;
             pressure = 0.0f;
@@ -37,8 +37,8 @@ public class ParticleManager : MonoBehaviour
     {
 
         public float radius;
-        public float smoothingRadius;
-        public float smoothingRadiusSq;
+        public float kernelRadius;
+        public float kernelRadiusSq;
         public float restdensity;
         public float gravityMultiplier;
         public float mass;
@@ -61,8 +61,8 @@ public class ParticleManager : MonoBehaviour
     [SerializeField] private SPHParameters[] parameters = null;
 
     [Header("Properties")]
-    [SerializeField] private int Amount = 1000;
-    [SerializeField] private int Rows = 8;
+    [SerializeField] private int Amount = 2000;
+    [SerializeField] private int Rows = 20;
 
     private Particle[] particles;
 
@@ -106,15 +106,15 @@ public class ParticleManager : MonoBehaviour
 
         for (int i = 0; i < Amount; i++)
         {
-            float x = (i % Rows) + UnityEngine.Random.Range(-0.1f, 0.1f);
+            float x = (i % Rows) + Random.Range(-0.1f, 0.1f);
             float y = 2 + (float)((i / Rows) / Rows) * 1.1f;
-            float z = ((i / Rows) % Rows) + UnityEngine.Random.Range(-0.1f, 0.1f);
+            float z = ((i / Rows) % Rows) + Random.Range(-0.1f, 0.1f);
 
-            GameObject thisGO = Instantiate(ParticlePrefab);
-            thisGO.transform.localScale = Vector3.one * parameters[parameterID].radius;
-            thisGO.transform.position = new Vector3(x, y, z);
+            GameObject particlePrefab = Instantiate(ParticlePrefab);
+            particlePrefab.transform.localScale = Vector3.one * parameters[parameterID].radius;
+            particlePrefab.transform.position = new Vector3(x, y, z);
 
-            particles[i].Init(new Vector3(x, y, z), parameterID, thisGO);
+            particles[i].Init(new Vector3(x, y, z), parameterID, particlePrefab);
         }
     }
 
@@ -131,9 +131,9 @@ public class ParticleManager : MonoBehaviour
                 Vector3 rij = particles[j].position - particles[i].position;
                 float r = rij.sqrMagnitude;
 
-                if (r < parameters[particles[i].parameterID].smoothingRadiusSq)
+                if (r < parameters[particles[i].parameterID].kernelRadiusSq)
                 {
-                    particles[i].density += parameters[particles[i].parameterID].mass * 315.0f / (64.0f * Mathf.PI * (float)Mathf.Pow(parameters[particles[i].parameterID].smoothingRadius, 9.0f)) * Mathf.Pow(parameters[particles[i].parameterID].smoothingRadiusSq - r, 3f);
+                    particles[i].density += parameters[particles[i].parameterID].mass * 315.0f / (64.0f * Mathf.PI * (float)Mathf.Pow(parameters[particles[i].parameterID].kernelRadius, 9.0f)) * Mathf.Pow(parameters[particles[i].parameterID].kernelRadiusSq - r, 3f);
                 }
 
             }
@@ -141,34 +141,6 @@ public class ParticleManager : MonoBehaviour
             particles[i].pressure = gasValue * (particles[i].density - parameters[particles[i].parameterID].restdensity);
         });
     }
-
-    /* Spiky Kernal
-    private void ComputedensityPressure()
-    {
-        Parallel.For(0, particles.Length, i =>
-        {
-            particles[i].density = 0.0f;
-
-            for (int j = 0; j < particles.Length; j++)
-            {
-                Vector3 rij = particles[j].position - particles[i].position;
-                float r = rij.sqrMagnitude;
-                float root = Mathf.Sqrt(r);
-
-                if (r < parameters[particles[i].parameterID].smoothingRadiusSq)
-                {
-                    particles[i].density += parameters[particles[i].parameterID].mass * 15.0f / (Mathf.PI * (float)Mathf.Pow(parameters[particles[i].parameterID].smoothingRadius, 6.0f)) * Mathf.Pow(parameters[particles[i].parameterID].smoothingRadiusSq - r, 3f);
-                }
-
-            }
-
-            particles[i].pressure = gasValue * (particles[i].density - parameters[particles[i].parameterID].restdensity);
-        });
-    }
-    */
-    //315.0f / (64.0f * Mathf.PI * (float)Mathf.Pow(parameters[particles[i].parameterID].smoothingRadius, 9.0f))
-
-
     //Compute pressure, viscosity and gravity
     private void ComputeForces()
     {
@@ -185,17 +157,17 @@ public class ParticleManager : MonoBehaviour
                 float r2 = rij.sqrMagnitude;
                 float r = Mathf.Sqrt(r2);
 
-                if (r < parameters[particles[i].parameterID].smoothingRadius)
+                if (r < parameters[particles[i].parameterID].kernelRadius)
                 {
-                    forcePressure += (particles[i].pressure + particles[j].pressure) * parameters[particles[i].parameterID].mass * -rij.normalized / (2.0f * particles[j].density) * (-45.0f / (Mathf.PI * Mathf.Pow(parameters[particles[i].parameterID].smoothingRadius, 6.0f))) * Mathf.Pow(parameters[particles[i].parameterID].smoothingRadius - r, 2.0f);
+                    forcePressure += (particles[i].pressure + particles[j].pressure) * parameters[particles[i].parameterID].mass * -rij.normalized / (2.0f * particles[j].density) * (-45.0f / (Mathf.PI * Mathf.Pow(parameters[particles[i].parameterID].kernelRadius, 6.0f))) * Mathf.Pow(parameters[particles[i].parameterID].kernelRadius - r, 2.0f);
 
-                    forceViscosity += parameters[particles[i].parameterID].viscosity * parameters[particles[i].parameterID].mass * (particles[j].velocity - particles[i].velocity) / particles[j].density * (45.0f / (Mathf.PI * Mathf.Pow(parameters[particles[i].parameterID].smoothingRadius, 6.0f))) * (parameters[particles[i].parameterID].smoothingRadius - r);
+                    forceViscosity += parameters[particles[i].parameterID].viscosity * parameters[particles[i].parameterID].mass * (particles[j].velocity - particles[i].velocity) / particles[j].density * (40.0f / (Mathf.PI * Mathf.Pow(parameters[particles[i].parameterID].kernelRadius, 6.0f))) * (parameters[particles[i].parameterID].kernelRadius - r);
                 }
             }
 
-            Vector3 forceGravity = gravity * particles[i].density * parameters[particles[i].parameterID].gravityMultiplier;
+            Vector3 forceGravity = gravity * parameters[particles[i].parameterID].mass * parameters[particles[i].parameterID].gravityMultiplier;
 
-            particles[i].forcePhysic = forcePressure + forceViscosity + forceGravity;
+            particles[i].forceN = forcePressure + forceViscosity + forceGravity;
         });
     }
 
@@ -204,10 +176,11 @@ public class ParticleManager : MonoBehaviour
     {
         for (int i = 0; i < particles.Length; i++)
         {
-            particles[i].velocity += deltaTime * (particles[i].forcePhysic) / particles[i].density;
+            particles[i].velocity += deltaTime * (particles[i].forceN) / particles[i].density;
             particles[i].position += deltaTime * (particles[i].velocity);
         }
     }
+
 
     //Boundary conditions
     private void ComputeColliders()
@@ -220,7 +193,7 @@ public class ParticleManager : MonoBehaviour
             colliders[i].Initializecollider(collidersGO[i].transform);
         }
 
-        for (int i = 0; i < particles.Length; i++)
+        Parallel.For(0, particles.Length, i =>
         {
             for (int j = 0; j < colliders.Length; j++)
             {
@@ -235,7 +208,7 @@ public class ParticleManager : MonoBehaviour
                     particles[i].position = penetrationposition - penetrationNormal * Mathf.Abs(penetrationLength);
                 }
             }
-        }
+        });
     }
     private static bool Intersect(ParticleCollider collider, Vector3 position, float radius, out Vector3 penetrationNormal, out Vector3 penetrationposition, out float penetrationLength)
     {
@@ -261,7 +234,7 @@ public class ParticleManager : MonoBehaviour
             particles[i].gameObject.transform.position = particles[i].position;
         }
     }
-
+    //Manipulate movement
     private void PlayerInput()
     {
         if (Input.GetKeyDown(KeyCode.LeftArrow))

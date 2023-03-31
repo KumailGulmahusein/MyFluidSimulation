@@ -1142,9 +1142,9 @@ MonoBehaviour:
   - radius: 1
     kernelRadius: 1.03
     kernelRadiusSq: 1
-    restDensity: 45
-    mass: 0.1
     viscosity: 1
+    mass: 0.1
+    restDensity: 45
     drag: 0.025
   Amount: 2000
   Rows: 20

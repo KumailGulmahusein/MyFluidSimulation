@@ -11,7 +11,7 @@ public class ParticleManager : MonoBehaviour
         public GameObject gameObject;
         public Vector3 position;
         public Vector3 velocity;
-        public Vector3 bodyForce;
+        public Vector3 force;
         public float density;
         public float pressure;
         public int parameterID;
@@ -34,9 +34,9 @@ public class ParticleManager : MonoBehaviour
         public float radius;
         public float kernelRadius;
         public float kernelRadiusSq;
-        public float restDensity;
-        public float mass;
         public float viscosity;
+        public float mass;
+        public float restDensity;
         public float drag;
     }
 
@@ -90,7 +90,7 @@ public class ParticleManager : MonoBehaviour
         Integrate();
         ComputeBoundary();
         UpdatePosition();
-        PlayerInput();
+        PInput();
     }
 
     //Initialize GameObjects
@@ -122,14 +122,15 @@ public class ParticleManager : MonoBehaviour
 
             for (int j = 0; j < particles.Length; j++)
             {
-                Vector3 rij = particles[i].position - particles[j].position;
+                Vector3 rij = particles[j].position - particles[i].position;
                 float r = rij.sqrMagnitude;
 
 
                 if (r < parameters[particles[i].parameterID].kernelRadiusSq)
                 {
 
-                    particles[i].density += parameters[particles[i].parameterID].mass * 315.0f / (64.0f * Mathf.PI * (float)Mathf.Pow(parameters[particles[i].parameterID].kernelRadius, 9.0f)) * Mathf.Pow(parameters[particles[i].parameterID].kernelRadiusSq - r, 3f);
+                    particles[i].density += parameters[particles[i].parameterID].mass * 315.0f / (64.0f * Mathf.PI * (float)Mathf.Pow(parameters[particles[i].parameterID].kernelRadius, 9.0f))
+                    * Mathf.Pow(parameters[particles[i].parameterID].kernelRadiusSq - r, 3f);
 
                 }
 
@@ -155,16 +156,18 @@ public class ParticleManager : MonoBehaviour
 
                 if (r < parameters[particles[i].parameterID].kernelRadius)
                 {
-                    forcePressure += (particles[i].pressure + particles[j].pressure) * parameters[particles[i].parameterID].mass * -rij.normalized / (2.0f * particles[j].density) * (-15.0f / (Mathf.PI * Mathf.Pow(parameters[particles[i].parameterID].kernelRadius, 6.0f))) * Mathf.Pow(parameters[particles[i].parameterID].kernelRadius - r, 3.0f);
+                    forcePressure += (particles[i].pressure + particles[j].pressure) * parameters[particles[i].parameterID].mass * -rij.normalized / (2.0f * particles[j].density) 
+                    * (-15.0f / (Mathf.PI * Mathf.Pow(parameters[particles[i].parameterID].kernelRadius, 6.0f))) * Mathf.Pow(parameters[particles[i].parameterID].kernelRadius - r, 3.0f);
 
-                    forceViscosity += parameters[particles[i].parameterID].viscosity * parameters[particles[i].parameterID].mass * (particles[j].velocity - particles[i].velocity) / particles[j].density * (45.0f / (Mathf.PI * Mathf.Pow(parameters[particles[i].parameterID].kernelRadius, 6.0f))) * (parameters[particles[i].parameterID].kernelRadius - r);
+                    forceViscosity += parameters[particles[i].parameterID].viscosity * parameters[particles[i].parameterID].mass * (particles[j].velocity - particles[i].velocity) / particles[j].density 
+                    * (45.0f / (Mathf.PI * Mathf.Pow(parameters[particles[i].parameterID].kernelRadius, 6.0f))) * (parameters[particles[i].parameterID].kernelRadius - r);
 
                 }
             }
 
             Vector3 forceGravity = gravity * parameters[particles[i].parameterID].mass * 1500;
 
-            particles[i].bodyForce = forcePressure + forceViscosity + forceGravity;
+            particles[i].force = forcePressure + forceViscosity + forceGravity;
         });
     }
 
@@ -173,7 +176,7 @@ public class ParticleManager : MonoBehaviour
           {
               for (int i = 0; i < particles.Length; i++)
               {
-                  particles[i].velocity += deltaTime * (particles[i].bodyForce) / particles[i].density;
+                  particles[i].velocity += deltaTime * (particles[i].force) / particles[i].density;
                   particles[i].position += deltaTime * (particles[i].velocity);
               }
           }
@@ -231,7 +234,7 @@ public class ParticleManager : MonoBehaviour
         }
     }
     //Manipulate movement
-    private void PlayerInput()
+    private void PInput()
     {
         if (Input.GetKeyDown(KeyCode.LeftArrow))
         {

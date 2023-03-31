@@ -11,11 +11,11 @@ public class ParticleManager : MonoBehaviour
         public GameObject gameObject;
         public Vector3 position;
         public Vector3 velocity;
-        public Vector3 forceN;
-        public Vector3 forceHeading;
+        public Vector3 bodyForce;
         public float density;
         public float pressure;
         public int parameterID;
+
 
         public void Init(Vector3 pposition, int pparameterID, GameObject pGo)
         {
@@ -23,33 +23,26 @@ public class ParticleManager : MonoBehaviour
             parameterID = pparameterID;
             gameObject = pGo;
 
-            velocity = Vector3.zero;
-            forceN = Vector3.zero;
-            forceHeading = Vector3.zero;
-            density = 0.0f;
-            pressure = 0.0f;
         }
     }
 
     //Simulation variables
     [System.Serializable]
-    private struct SPHParameters
+    private struct ParticleParameters
     {
 
         public float radius;
         public float kernelRadius;
         public float kernelRadiusSq;
-        public float restdensity;
-        public float gravityMultiplier;
+        public float restDensity;
         public float mass;
         public float viscosity;
         public float drag;
-
     }
 
     private Vector3 gravity = new Vector3(0.0f, -9.81f, 0.0f);
     private const float gasValue = 2000.0f;
-    private const float deltaTime = 0.0008f;
+    private const float deltaTime = 0.0007f;
     private const float boundDamping = -0.5f;
 
     // Properties
@@ -58,13 +51,14 @@ public class ParticleManager : MonoBehaviour
 
     [Header("Parameters")]
     [SerializeField] private int parameterID = 0;
-    [SerializeField] private SPHParameters[] parameters = null;
+    [SerializeField] private ParticleParameters[] parameters = null;
 
     [Header("Properties")]
     [SerializeField] private int Amount = 2000;
     [SerializeField] private int Rows = 20;
 
     private Particle[] particles;
+
 
     //Collider variables
     private struct ParticleCollider
@@ -91,11 +85,11 @@ public class ParticleManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        ComputedensityPressure();
+        ComputeDensityPressure();
         ComputeForces();
         Integrate();
-        ComputeColliders();
-        Changeposition();
+        ComputeBoundary();
+        UpdatePosition();
         PlayerInput();
     }
 
@@ -118,29 +112,32 @@ public class ParticleManager : MonoBehaviour
         }
     }
 
-
     //Compute density pressure
-    private void ComputedensityPressure()
+    private void ComputeDensityPressure()
     {
+
         Parallel.For(0, particles.Length, i =>
         {
             particles[i].density = 0.0f;
 
             for (int j = 0; j < particles.Length; j++)
             {
-                Vector3 rij = particles[j].position - particles[i].position;
+                Vector3 rij = particles[i].position - particles[j].position;
                 float r = rij.sqrMagnitude;
+
 
                 if (r < parameters[particles[i].parameterID].kernelRadiusSq)
                 {
+
                     particles[i].density += parameters[particles[i].parameterID].mass * 315.0f / (64.0f * Mathf.PI * (float)Mathf.Pow(parameters[particles[i].parameterID].kernelRadius, 9.0f)) * Mathf.Pow(parameters[particles[i].parameterID].kernelRadiusSq - r, 3f);
+
                 }
 
+                particles[i].pressure = gasValue * (particles[i].density - parameters[particles[i].parameterID].restDensity);
             }
-
-            particles[i].pressure = gasValue * (particles[i].density - parameters[particles[i].parameterID].restdensity);
         });
     }
+
     //Compute pressure, viscosity and gravity
     private void ComputeForces()
     {
@@ -148,42 +145,41 @@ public class ParticleManager : MonoBehaviour
         {
             Vector3 forceViscosity = Vector3.zero;
             Vector3 forcePressure = Vector3.zero;
-            
+
             for (int j = 0; j < particles.Length; j++)
             {
                 if (i == j) continue;
 
                 Vector3 rij = particles[j].position - particles[i].position;
-                float r2 = rij.sqrMagnitude;
-                float r = Mathf.Sqrt(r2);
+                float r = rij.sqrMagnitude;
 
                 if (r < parameters[particles[i].parameterID].kernelRadius)
                 {
-                    forcePressure += (particles[i].pressure + particles[j].pressure) * parameters[particles[i].parameterID].mass * -rij.normalized / (2.0f * particles[j].density) * (-45.0f / (Mathf.PI * Mathf.Pow(parameters[particles[i].parameterID].kernelRadius, 6.0f))) * Mathf.Pow(parameters[particles[i].parameterID].kernelRadius - r, 2.0f);
+                    forcePressure += (particles[i].pressure + particles[j].pressure) * parameters[particles[i].parameterID].mass * -rij.normalized / (2.0f * particles[j].density) * (-15.0f / (Mathf.PI * Mathf.Pow(parameters[particles[i].parameterID].kernelRadius, 6.0f))) * Mathf.Pow(parameters[particles[i].parameterID].kernelRadius - r, 3.0f);
 
-                    forceViscosity += parameters[particles[i].parameterID].viscosity * parameters[particles[i].parameterID].mass * (particles[j].velocity - particles[i].velocity) / particles[j].density * (40.0f / (Mathf.PI * Mathf.Pow(parameters[particles[i].parameterID].kernelRadius, 6.0f))) * (parameters[particles[i].parameterID].kernelRadius - r);
+                    forceViscosity += parameters[particles[i].parameterID].viscosity * parameters[particles[i].parameterID].mass * (particles[j].velocity - particles[i].velocity) / particles[j].density * (45.0f / (Mathf.PI * Mathf.Pow(parameters[particles[i].parameterID].kernelRadius, 6.0f))) * (parameters[particles[i].parameterID].kernelRadius - r);
+
                 }
             }
 
-            Vector3 forceGravity = gravity * parameters[particles[i].parameterID].mass * parameters[particles[i].parameterID].gravityMultiplier;
+            Vector3 forceGravity = gravity * parameters[particles[i].parameterID].mass * 1500;
 
-            particles[i].forceN = forcePressure + forceViscosity + forceGravity;
+            particles[i].bodyForce = forcePressure + forceViscosity + forceGravity;
         });
     }
 
     //Numerical integration timestep
     private void Integrate()
-    {
-        for (int i = 0; i < particles.Length; i++)
-        {
-            particles[i].velocity += deltaTime * (particles[i].forceN) / particles[i].density;
-            particles[i].position += deltaTime * (particles[i].velocity);
-        }
-    }
-
+          {
+              for (int i = 0; i < particles.Length; i++)
+              {
+                  particles[i].velocity += deltaTime * (particles[i].bodyForce) / particles[i].density;
+                  particles[i].position += deltaTime * (particles[i].velocity);
+              }
+          }
 
     //Boundary conditions
-    private void ComputeColliders()
+    private void ComputeBoundary()
     {
         // Get colliders
         GameObject[] collidersGO = GameObject.FindGameObjectsWithTag("SPHCollider");
@@ -227,7 +223,7 @@ public class ParticleManager : MonoBehaviour
         return newvelocity;
     }
 
-    private void Changeposition()
+    private void UpdatePosition()
     {
         for (int i = 0; i < particles.Length; i++)
         {

@@ -1140,10 +1140,9 @@ MonoBehaviour:
   parameterID: 0
   parameters:
   - radius: 1
-    smoothingRadius: 1.05
-    smoothingRadiusSq: 0.97
-    restdensity: 15
-    gravityMultiplier: 1500
+    kernelRadius: 1.03
+    kernelRadiusSq: 1
+    restDensity: 45
     mass: 0.1
     viscosity: 1
     drag: 0.025
